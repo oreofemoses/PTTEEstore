@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* Light mode background - white */
+    --foreground: 222.2 84% 4.9%; /* Light mode text - very dark blue */
+    --card: 0 0% 100%; /* Light mode card background - white */
+    --card-foreground: 222.2 84% 4.9%; /* Light mode card text - very dark blue */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%; /* Primary actions - dark blue */
+    --primary-foreground: 210 40% 98%; /* Text on primary - very light gray */
+    --secondary: 240 5.9% 90%; /* Secondary elements background - light gray */
+    --secondary-foreground: 222.2 84% 4.9%; /* Text on secondary - very dark blue */
+    --muted: 210 40% 96.1%; /* Muted elements background - very light gray */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Muted text - grayish blue */
+    --accent: 210 40% 96.1%; /* Accent elements background - very light gray */
+    --accent-foreground: 222.2 84% 4.9%; /* Accent text - very dark blue */
+    --destructive: 0 84.2% 60.2%; /* Destructive actions - red */
+    --destructive-foreground: 210 40% 98%; /* Text on destructive - very light gray */
+    --border: 214.3 31.8% 91.4%; /* Borders - light gray */
+    --input: 214.3 31.8% 91.4%; /* Input fields background - light gray */
+    --ring: 222.2 84% 4.9%; /* Focus rings - very dark blue */
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom animations and styles */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-8px);
+  @apply shadow-xl;
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.8);
+  }
+}
+
+.wishlist-badge {
+  background: linear-gradient(45deg, #ff6b6b, #feca57);
+  animation: wishlist-pulse 1.5s infinite;
+}
+
+@keyframes wishlist-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.sold-overlay {
+  background: linear-gradient(45deg, rgba(255, 0, 0, 0.8), rgba(255, 100, 100, 0.8));
+  backdrop-filter: blur(4px);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-muted;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a6fd8, #6a4190);
+}

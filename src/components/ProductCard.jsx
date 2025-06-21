@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useNavigate } from 'react-router-dom';
+import { getTransformedImageUrl } from '@/lib/utils';
 
 const ProductCard = ({ product, onQuickView }) => {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
@@ -39,7 +40,8 @@ const ProductCard = ({ product, onQuickView }) => {
     navigate(`/custom-design?baseProductId=${product.id}&baseImageUrl=${encodeURIComponent(product.image_url || '')}&baseName=${encodeURIComponent(product.name)}&baseDescription=${encodeURIComponent(product.description || '')}`);
   };
 
-  const placeholderImage = `https://via.placeholder.com/400x300.png?text=${encodeURIComponent(product.name)}`;
+  const placeholderImage = `https://placehold.co/400x256/EBEBEB/000000?text=${encodeURIComponent(product.name)}`;
+  const thumbnailUrl = getTransformedImageUrl(product.image_url, { width: 400, height: 256 });
 
   return (
     <motion.div
@@ -53,9 +55,10 @@ const ProductCard = ({ product, onQuickView }) => {
       >
         <div className="relative">
           <img
-            src={product.image_url || placeholderImage}
+            src={thumbnailUrl || placeholderImage}
             alt={product.name}
-            className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-64 object-contain transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
             onError={(e) => { e.target.onerror = null; e.target.src=placeholderImage; }}
           />
           

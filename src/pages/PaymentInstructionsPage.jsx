@@ -104,12 +104,10 @@ const PaymentInstructionsPage = () => {
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage.from('payment-receipts').getPublicUrl(filePath);
-
     const { data: updatedOrder, error: updateError } = await supabase
       .from('orders')
       .update({
-        payment_receipt_url: publicUrl,
+        payment_receipt_url: filePath,
         status: 'Pending Confirmation'
       })
       .eq('id', orderId)

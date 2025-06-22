@@ -159,6 +159,12 @@ const ProfilePage = () => {
     return status;
   };
 
+  const handleOrderClick = (order) => {
+    if (order.status === 'Awaiting Payment') {
+      navigate(`/payment-instructions/${order.id}`);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -346,15 +352,26 @@ const ProfilePage = () => {
                     ) : (
                       <div className="space-y-6 max-h-96 overflow-y-auto custom-scrollbar pr-2">
                         {userOrders.map((order) => (
-                          <motion.div key={order.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-4">
+                          <motion.div
+                            key={order.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            onClick={() => handleOrderClick(order)}
+                            className={`
+                              p-4 rounded-lg bg-white shadow-md
+                              ${order.status === 'Awaiting Payment' ? 'cursor-pointer hover:shadow-lg hover:border-purple-400 border-2 border-transparent' : ''}
+                              transition-all duration-300
+                            `}
+                          >
+                            <div className="flex justify-between items-start">
                               <div>
-                                <h3 className="font-semibold text-lg">Order ID: {order.id.substring(0,8)}...</h3>
-                                <p className="text-gray-600 text-sm">Placed on {new Date(order.created_at).toLocaleDateString()}</p>
+                                <p className="font-semibold text-purple-700">Order #{order.id.substring(0, 8)}</p>
+                                <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString()}</p>
                               </div>
-                              <Badge className={`${getStatusColor(order.status)}`}>{order.status}</Badge>
+                              <Badge className={`${getStatusColor(order.status)} text-xs`}>{order.status}</Badge>
                             </div>
-                            <div className="space-y-3 mb-3">
+
+                            <div className="space-y-3 my-3">
                               {order.order_items_details && order.order_items_details.map((item, index) => (
                                 <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                                   <div className="flex items-center gap-2">
@@ -362,15 +379,21 @@ const ProfilePage = () => {
                                       <div>
                                         <p className="font-medium text-sm">{item.name}</p>
                                         <p className="text-xs text-gray-500">Qty: {item.quantity}{item.size ? `, Size: ${item.size}` : ''}{item.color ? `, Color: ${item.color}` : ''}</p>
-                                        {(item.is_one_of_one || item.isCustom) && <Badge variant="outline" className="mt-1 text-xs">🏆 Exclusive</Badge>}
+                                        {(item.is_one_of_one || item.isCustom) && <Badge variant="outline" className="mt-1 text-xs">Exclusive</Badge>}
                                       </div>
                                   </div>
-                                  <p className="font-semibold text-sm">₦{item.price_at_purchase.toLocaleString()}</p>
+                                  <p className="font-semibold text-sm">₦{item.price_at_purchase?.toLocaleString()}</p>
                                 </div>
                               ))}
                             </div>
-                            <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
-                              <span className="font-semibold">Total: ₦{order.total_amount.toLocaleString()}</span>
+                            
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <p className="font-semibold">Total: ₦{order.total_amount.toLocaleString()}</p>
+                              {order.status === 'Awaiting Payment' && (
+                                  <p className="text-xs text-purple-600 mt-1 animate-pulse">
+                                    Click to complete payment
+                                  </p>
+                              )}
                             </div>
                           </motion.div>
                         ))}

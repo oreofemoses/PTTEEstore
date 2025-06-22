@@ -56,6 +56,28 @@ const OrderManagement = () => {
     }
   };
 
+  const handleViewReceipt = async (receiptPath) => {
+    if (!receiptPath) return;
+    try {
+      const { data, error } = await supabase
+        .storage
+        .from('payment-receipts')
+        .createSignedUrl(receiptPath, 60); // 60 seconds validity
+
+      if (error) {
+        throw error;
+      }
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Error creating signed URL:', error);
+      toast({
+        title: "Error",
+        description: "Could not display receipt. " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusBadgeVariant = (status) => {
     switch (status) {
       case 'Awaiting Payment': return 'bg-orange-400 text-black';
@@ -132,9 +154,13 @@ const OrderManagement = () => {
                 {order.payment_receipt_url && (
                     <div className="mb-4">
                         <h4 className="font-medium text-sm text-gray-700 mb-1">Payment Receipt:</h4>
-                        <a href={order.payment_receipt_url} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline inline-flex items-center gap-1 text-sm">
+                        <Button
+                            variant="link"
+                            className="text-purple-600 h-auto p-0 inline-flex items-center gap-1 text-sm"
+                            onClick={() => handleViewReceipt(order.payment_receipt_url)}
+                        >
                             <Paperclip className="w-4 h-4" /> View Receipt
-                        </a>
+                        </Button>
                     </div>
                 )}
 

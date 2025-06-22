@@ -109,7 +109,7 @@ const CustomDesignPage = () => {
       const { data, error } = await supabase
         .from('custom_design_requests')
         .insert([{ 
-          user_id: user?.id, 
+          user_id: user ? user.id : null, 
           user_email: user ? user.email : currentFormData.email,
           user_name: user ? (user.user_metadata?.full_name || user.email.split('@')[0]) : currentFormData.name,
           description: currentFormData.description,

@@ -17,6 +17,7 @@ const OrderManagement = () => {
     id, user_id, total_amount, status, shipping_address, payment_details, created_at, updated_at,
     order_items_details, payment_code, payment_receipt_url,
     profiles!fk_orders_user_id (email, full_name)
+    order_items!fk_order_items_order_id ( name, quantity, price, image_url, is_custom_design, size, color )
   `;
 
   const fetchOrders = useCallback(async () => {
@@ -138,9 +139,22 @@ const OrderManagement = () => {
                   <h4 className="font-medium text-sm text-gray-700 mb-1">Items:</h4>
                   <ul className="list-disc list-inside pl-1 space-y-1 text-sm">
                     {(order.order_items_details)?.map((item, index) => (
-                       <li key={index} className="text-gray-600">
-                         {item.quantity}x {item.name} - ₦{item.price_at_purchase?.toLocaleString()} each
-                         {item.isCustom && <Badge variant="outline" className="ml-2 text-xs">Custom</Badge>}
+                       <li key={index} className="text-gray-600 flex items-center mb-2">
+                         {item.image_url && (
+                           <img src={item.image_url} alt={item.name} className="w-10 h-10 object-cover rounded mr-2" />
+                         )}
+                         <div>
+                           {item.quantity}x {item.name} - ₦{(item.price || item.price_at_purchase)?.toLocaleString()} each
+                           {(item.size || item.color) && (
+                             <p className="text-xs text-gray-500">
+                               {item.size && `Size: ${item.size}`}
+                               {item.size && item.color && ' | '}
+                               {item.color && `Color: ${item.color}`}
+                             </p>
+                           )}
+                           {item.is_custom_design && <Badge variant="outline" className="ml-2 text-xs">Custom</Badge>}
+                           {item.isCustom && <Badge variant="outline" className="ml-2 text-xs">Custom Design</Badge>}
+                         </div>
                        </li>
                     ))}
                   </ul>

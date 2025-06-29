@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Truck, AlertTriangle, Package, Loader2, Banknote } from 'lucide-react';
+import { Lock, Truck, AlertTriangle, ExternalLink, Package, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ const NIGERIAN_STATES = [
 const CheckoutPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
+  const [isCUStudent, setIsCUStudent] = useState(false); // New state for CU student
   const [formData, setFormData] = useState({
     email: '',
     name: '',
@@ -54,9 +55,11 @@ const CheckoutPage = () => {
     }
   }, [user]);
   
-  const calculateShipping = useCallback((selectedState) => {
+  const calculateShipping = useCallback((selectedState, isCU) => {
     const stateLower = selectedState.toLowerCase();
-    if (stateLower === 'ogun' || stateLower === 'lagos') {
+    if (isCU && stateLower === 'ogun') { // CU student in Ogun state
+      setShippingCost(1000);
+    } else if (stateLower === 'ogun' || stateLower === 'lagos') {
       setShippingCost(2000);
     } else if (selectedState === '') {
       setShippingCost(0);
@@ -68,11 +71,11 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (formData.state) {
-      calculateShipping(formData.state);
+      calculateShipping(formData.state, isCUStudent);
     } else {
       setShippingCost(0);
     }
-  }, [formData.state, calculateShipping]);
+  }, [formData.state, calculateShipping, isCUStudent]); // Add isCUStudent to dependency array
 
   const totalAmount = getTotalPrice();
   const finalAmount = totalAmount + shippingCost;
@@ -84,8 +87,16 @@ const CheckoutPage = () => {
   const handleStateChange = (value) => {
     setFormData(prev => ({ ...prev, state: value }));
   };
+  
+  const handleCUStudentChange = (e) => {
+    const isChecked = e.target.checked;
+    setIsCUStudent(isChecked);
+    if (isChecked) {
+      setFormData(prev => ({ ...prev, state: 'Ogun', city: 'Ota' }));
+    }
+  };
 
-  const createOrderForBankTransfer = async () => {
+  const createPendingOrderWithItems = async (tx_ref) => {
     if (!user) {
       toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
       return null;
@@ -110,18 +121,15 @@ const CheckoutPage = () => {
       isCustom: item.isCustom || false
     }));
 
-    const paymentCode = `PTTEE-${Date.now().toString(36).slice(-6).toUpperCase()}`;
-
     const orderData = {
       user_id: user.id,
       total_amount: finalAmount,
-      status: 'Awaiting Payment',
-      payment_code: paymentCode,
+      status: 'Pending',
       shipping_address: {
         name: formData.name, address: formData.address, city: formData.city,
         state: formData.state, zipCode: formData.zipCode, country: formData.country, phone: formData.phone_number,
       },
-      payment_details: { method: 'Bank Transfer' },
+      payment_details: { tx_ref, payment_gateway: 'flutterwave' },
       order_items_details: orderItemsDetailsForSnapshot,
       shipping_cost: shippingCost, 
       subtotal: totalAmount,
@@ -129,8 +137,8 @@ const CheckoutPage = () => {
 
     const { data: order, error: orderError } = await supabase.from('orders').insert([orderData]).select().single();
     if (orderError) {
-      console.error('Error creating order:', orderError);
-      toast({ title: "Order Error", description: `Could not create order: ${orderError.message}`, variant: "destructive" });
+      console.error('Error creating pending order:', orderError);
+      toast({ title: "Order Error", description: `Could not initialize order: ${orderError.message}`, variant: "destructive" });
       return null;
     }
     
@@ -160,12 +168,35 @@ const CheckoutPage = () => {
         return;
     }
 
-    const newOrder = await createOrderForBankTransfer();
+    const tx_ref = `pttee-${user.id.substring(0, 8)}-${Date.now()}`;
+    const pendingOrder = await createPendingOrderWithItems(tx_ref);
+    if (!pendingOrder) {
+      setIsProcessing(false);
+      return;
+    }
 
-    if (newOrder) {
-      await clearCart(true);
-      navigate(`/payment-instructions/${newOrder.id}`);
-    } else {
+    const redirect_url = `${window.location.origin}/payment-status?order_id=${pendingOrder.id}&tx_ref=${tx_ref}`;
+
+    try {
+      const { data, error: functionError } = await supabase.functions.invoke('create-flutterwave-link', {
+        body: {
+          amount: finalAmount, email: formData.email, name: formData.name, phone_number: formData.phone_number,
+          tx_ref, redirect_url, order_id: pendingOrder.id, customer_id: user.id,
+          cart_items: cartItems.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity })),
+        },
+      });
+
+      if (functionError || data.error) throw new Error(functionError?.message || data.error || "Failed to get payment link.");
+
+      if (data.link) {
+        clearCart(true); 
+        window.location.href = data.link;
+      } else {
+        throw new Error("Could not retrieve payment link from Flutterwave.");
+      }
+    } catch (err) {
+      console.error("Payment initialization failed:", err);
+      toast({ title: "Payment Error", description: err.message || "Could not connect to payment gateway.", variant: "destructive" });
       setIsProcessing(false);
     }
   };
@@ -244,20 +275,24 @@ const CheckoutPage = () => {
                       <div><Label htmlFor="city">City *</Label><Input id="city" name="city" value={formData.city} onChange={handleInputChange} required /></div>
                       <div>
                         <Label htmlFor="state">State *</Label>
-                        <Select name="state" value={formData.state} onValueChange={handleStateChange}>
+                        <Select name="state" value={formData.state} onValueChange={handleStateChange} disabled={isCUStudent}>
                           <SelectTrigger className="w-full"><SelectValue placeholder="Select state" /></SelectTrigger>
                           <SelectContent>{NIGERIAN_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <input id="cu_student" type="checkbox" checked={isCUStudent} onChange={handleCUStudentChange} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
+                        <Label htmlFor="cu_student">Are you a Covenant University student?</Label>
+                      </div>
+                      <div><Label htmlFor="zipCode">Zip/Postal Code (Optional)</Label><Input id="zipCode" name="zipCode" value={formData.zipCode} onChange={handleInputChange} /></div>
                     </div>
-                     <div><Label htmlFor="zipCode">Zip/Postal Code (Optional)</Label><Input id="zipCode" name="zipCode" value={formData.zipCode} onChange={handleInputChange} /></div>
                   </div>
-                  <p className="text-sm text-gray-600">You will proceed to a page with bank transfer instructions to complete your payment.</p>
+                  <p className="text-sm text-gray-600">You will be redirected to Flutterwave's secure page to complete payment.</p>
                   <Button type="submit" className="w-full h-12 text-lg hero-gradient text-white" disabled={isProcessing || !cartItems || cartItems.length === 0 || (formData.state && shippingCost === 0 && formData.state !== 'Ogun' && formData.state !== 'Lagos' && getTotalPrice() > 0) }>
                     {isProcessing ? (
-                      <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Placing Order...</div>
+                      <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Processing...</div>
                     ) : (
-                      <div className="flex items-center justify-center gap-2">Place Order <Banknote className="w-4 h-4" /></div>
+                      <div className="flex items-center justify-center gap-2">Pay ₦{finalAmount.toFixed(2)} <ExternalLink className="w-4 h-4" /></div>
                     )}
                   </Button>
                 </form>
